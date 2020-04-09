@@ -1,18 +1,18 @@
 package main
 
 import (
-	"fmt"
-	"io"
-	"log"
-	"net/http"
-	"os"
-	"strconv"
-
 	db "./db/conexion"
 	"./db/entities"
 	"./db/models"
+	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"io"
+	"log"
+	"net/http"
+	url2 "net/url"
+	"os"
+	"strconv"
 )
 
 func gategayFunc(w http.ResponseWriter, r *http.Request) {
@@ -32,16 +32,24 @@ func main() {
 }
 
 func sendType(w http.ResponseWriter, r *http.Request) {
-	url := r.Header.Get("Url")
+	urlComplete := r.Header.Get("Url")
+	url,errorsote:=url2.Parse(urlComplete)
+	if errorsote!=nil || url.Host == "" {
+		http.Error(w, "Url in existent", 500)
+		return
+	}
+	scheme:=url.Scheme
+	host:=url.Host
+	println(url.Scheme,url.Host,url.Path,url.RequestURI())
 	proxySecret := r.Header.Get("Proxy-Authorization")
-	id, auth := ValidateHttps(url, proxySecret)
+	id, auth := ValidateHttps(scheme+"://"+host, proxySecret)
 	log.Println(id, auth)
 	if !auth {
 		http.Error(w, "Unauthorized", 500)
 		return
 	}
 	// creation request
-	req, err := http.NewRequest(r.Method, url, r.Body)
+	req, err := http.NewRequest(r.Method, urlComplete, r.Body)
 	if err != nil {
 		// if error	send error
 		fmt.Fprintf(w, "Error to request"+err.Error())
@@ -72,7 +80,7 @@ func sendType(w http.ResponseWriter, r *http.Request) {
 		HttpMethod:     r.Method,
 		HttpMimeType:   r.Header.Get("Content-Type"),
 		HttpStatusCode: strconv.Itoa(response.StatusCode),
-		HttpUrl:        url,
+		HttpUrl:        urlComplete,
 		HttpReplySize:  int(body) + lenHeadersRequest + lenHeadersResponse,
 		AddressID:      strconv.FormatUint(uint64(id), 10),
 		TimeResponse:   10,
@@ -92,6 +100,7 @@ func ValidateHttps(host string, proxySecret string) (uint, bool) {
 		return 0, false
 	}
 	address := models.FindByHost(host, "", proxySecret)
+	println(address.ID)
 	if address.ID == 0 {
 		return 0, false
 	}

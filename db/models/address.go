@@ -14,7 +14,7 @@ func FindAll() (apis []entities.Address) {
 }
 func FindByHost(host string, url string, apikey string) (address entities.Address) {
 	my := db.DbConn()
-	my.Where("url LIKE ? and api_key  = ? and active  = ? ", "%"+host+"%", apikey, true).First(&address)
+	my.Where("url LIKE ? and api_key  = ? and active  = ?", "%"+host+"%", apikey, true).First(&address)
 	defer my.Close()
 
 	return
